@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Magic Notes with Akku</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    :root { --bg: radial-gradient(circle at 15% 15%, rgba(102,216,255,.24), transparent 22%), radial-gradient(circle at 85% 10%, rgba(144,166,255,.24), transparent 20%), radial-gradient(circle at 50% 90%, rgba(255,196,124,.2), transparent 18%), linear-gradient(145deg, #07111e 0%, #0d1f39 50%, #113754 100%); --shell: rgba(11,22,39,.75); --card: rgba(16,30,50,.9); --surface: rgba(255,255,255,.06); --line: rgba(255,255,255,.1); --text: #eef6ff; --muted: #98adc8; --primary: #6af0d0; --success: #85f2a3; --warning: #ffd76a; --shadow: 0 30px 80px rgba(0,0,0,.3); --paper: #fffefb; --paper-line: rgba(49,91,128,.08); --paper-text: #20314a; --paper-muted: #627791; --paper-pink: #e46c82; --paper-blue: #2978c7; --paper-green: #18856f; --paper-hi: rgba(62,167,142,.18); }
+    body.light-mode { --bg: radial-gradient(circle at 15% 15%, rgba(0,189,214,.14), transparent 24%), radial-gradient(circle at 85% 10%, rgba(124,142,255,.18), transparent 22%), radial-gradient(circle at 50% 90%, rgba(255,190,120,.18), transparent 18%), linear-gradient(145deg, #eef7ff 0%, #edf3ff 50%, #fdf7ef 100%); --shell: rgba(255,255,255,.78); --card: rgba(255,255,255,.9); --surface: rgba(12,33,58,.05); --line: rgba(16,42,72,.08); --text: #1b2a40; --muted: #5e738d; --shadow: 0 24px 60px rgba(25,51,84,.12); }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: 24px; font-family: "Manrope", sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; transition: background .25s ease, color .25s ease; }
+    button, input, textarea { font: inherit; }
+    .page { width: min(1180px, 100%); }
+    .shell { position: relative; overflow: hidden; padding: 34px; border-radius: 36px; background: var(--shell); border: 1px solid var(--line); box-shadow: var(--shadow); backdrop-filter: blur(22px); }
+    .shell::before, .shell::after { content: ""; position: absolute; border-radius: 999px; pointer-events: none; filter: blur(28px); }
+    .shell::before { width: 220px; height: 220px; top: -90px; right: -40px; background: rgba(106,240,208,.18); }
+    .shell::after { width: 180px; height: 180px; left: -30px; bottom: -50px; background: rgba(155,176,255,.16); }
+    .hero, .layout, .topbar { position: relative; z-index: 1; }
+    .topbar { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+    .theme-toggle { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 12px 16px; display: inline-flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; transition: transform .2s ease; }
+    .theme-toggle:hover, .btn:hover { transform: translateY(-2px); }
+    .hero { text-align: center; margin-bottom: 30px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--primary); font-size: .88rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+    h1 { margin: 18px 0 12px; font-family: "Space Grotesk", sans-serif; font-size: clamp(2.5rem, 5vw, 4.8rem); line-height: .98; letter-spacing: -.05em; }
+    .hero p { width: min(760px, 100%); margin: 0 auto; color: var(--muted); line-height: 1.75; font-size: 1.02rem; }
+    .stats { margin-top: 24px; display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+    .stat { padding: 12px 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); font-size: .94rem; }
+    .layout { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 24px; }
+    .card { padding: 24px; border-radius: 28px; background: var(--card); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+    .card-title { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .card-icon { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; font-size: 1.2rem; background: linear-gradient(135deg, rgba(106,240,208,.16), rgba(155,176,255,.16)); border: 1px solid var(--line); flex-shrink: 0; }
+    h2 { margin: 0; font-family: "Space Grotesk", sans-serif; font-size: 1.45rem; }
+    .card p { margin: 0; color: var(--muted); line-height: 1.75; }
+    .drop-zone { margin-top: 22px; padding: 34px 24px; text-align: center; border-radius: 26px; border: 2px dashed rgba(106,240,208,.34); background: linear-gradient(135deg, rgba(106,240,208,.12), rgba(155,176,255,.12)), rgba(255,255,255,.02); cursor: pointer; transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+    .drop-zone.dragover { transform: translateY(-4px) scale(1.01); border-color: var(--primary); box-shadow: 0 20px 44px rgba(20,63,105,.24); }
+    .drop-icon { width: 82px; height: 82px; margin: 0 auto 18px; border-radius: 26px; display: grid; place-items: center; font-size: 2rem; background: linear-gradient(135deg, rgba(106,240,208,.22), rgba(155,176,255,.22)); }
+    .drop-zone strong { display: block; margin-bottom: 8px; font-size: 1.15rem; }
+    .drop-zone span { display: block; margin-bottom: 18px; color: var(--muted); }
+    .hidden { display: none; }
+    .rows { display: flex; flex-wrap: wrap; gap: 12px; }
+    .rows.top { margin-top: 18px; }
+    .btn { border: 0; border-radius: 999px; padding: 14px 20px; font-weight: 800; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary { color: #06211b; background: linear-gradient(135deg, var(--primary), #b7fff1); box-shadow: 0 16px 34px rgba(106,240,208,.2); }
+    .btn-secondary { color: var(--text); background: var(--surface); border: 1px solid var(--line); }
+    .status-box { margin-top: 18px; padding: 14px 16px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; gap: 12px; }
+    .status-dot { width: 12px; height: 12px; border-radius: 999px; background: var(--warning); }
+    .status-dot.processing { animation: pulse 1.2s infinite; }
+    .status-dot.done { background: var(--success); box-shadow: 0 0 0 10px rgba(133,242,163,.08); }
+    .filename, .helper, .loader, .notes-loader { margin-top: 14px; color: var(--muted); font-size: .95rem; }
+    .loader, .notes-loader { display: none; align-items: center; gap: 12px; }
+    .loader.active, .notes-loader.active { display: flex; }
+    .spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.14); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+    .notes-loader .spinner { width: 18px; height: 18px; border-width: 2px; border-color: rgba(32,49,74,.16); border-top-color: var(--paper-green); }
+    .section-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .output-box { width: 100%; min-height: 320px; border-radius: 24px; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); padding: 18px; line-height: 1.75; resize: vertical; outline: none; }
+    .notes-paper { margin-top: 22px; padding: 22px; border-radius: 26px; border: 1px solid var(--paper-line); color: var(--paper-text); background: repeating-linear-gradient(to bottom, rgba(41,120,199,.08) 0, rgba(41,120,199,.08) 1px, transparent 1px, transparent 34px), linear-gradient(to right, rgba(228,108,130,.16) 0, rgba(228,108,130,.16) 3px, transparent 3px), var(--paper); box-shadow: 0 24px 40px rgba(16,40,67,.12); animation: notesRise .35s ease; }
+    .notes-paper.hidden { display: none; }
+    .notes-paper p { color: var(--paper-muted); }
+    .notes-summary { margin: 0 0 18px; padding: 14px 16px; border-radius: 18px; background: rgba(41,120,199,.06); border: 1px solid rgba(41,120,199,.08); color: #2d4c6f; line-height: 1.7; }
+    .handwritten-heading { font-family: "Caveat", cursive; font-size: 2rem; color: var(--paper-pink); margin: 0 0 12px; line-height: 1.1; }
+    .keywords { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+    .keyword { padding: 6px 11px; border-radius: 999px; background: rgba(24,133,111,.12); color: var(--paper-green); font-size: .88rem; font-weight: 800; }
+    .notes-sections { display: grid; gap: 18px; }
+    .notes-group { padding: 16px 16px 10px; border-radius: 18px; background: rgba(255,255,255,.72); border: 1px solid rgba(49,91,128,.08); }
+    .group-label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; margin-bottom: 10px; border-radius: 999px; background: rgba(41,120,199,.08); color: var(--paper-blue); font-size: .82rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .group-heading { margin: 0 0 12px; color: var(--paper-pink); font-family: "Caveat", cursive; font-size: 1.7rem; line-height: 1.1; }
+    .notes-points { margin: 0; padding-left: 22px; color: var(--paper-text); line-height: 1.9; font-family: "Caveat", cursive; font-size: 1.45rem; }
+    .notes-points li + li { margin-top: 10px; }
+    .notes-points li::marker { color: var(--paper-green); }
+    .highlight { font-weight: 800; color: var(--paper-green); background: linear-gradient(180deg, transparent 56%, var(--paper-hi) 56%); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,215,106,.55); } 70% { box-shadow: 0 0 0 12px rgba(255,215,106,0); } 100% { box-shadow: 0 0 0 0 rgba(255,215,106,0); } }
+    @keyframes notesRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width:900px) { body { padding: 16px; } .shell { padding: 22px; border-radius: 26px; } .layout { grid-template-columns: 1fr; } .section-header { flex-direction: column; align-items: stretch; } }
+    @media (max-width:560px) { .rows, .stats { flex-direction: column; } .btn { width: 100%; } .drop-zone { padding: 24px 18px; } .output-box { min-height: 280px; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="shell">
+      <div class="topbar">
+        <button class="theme-toggle" id="themeToggle" type="button">🌙 Dark Mode</button>
+      </div>
+
+      <header class="hero">
+        <div class="eyebrow">AI Notes Workspace</div>
+        <h1>Magic Notes with Akku</h1>
+        <p>
+          Upload an image or PDF, extract text with Tesseract.js, and instantly turn it into handwritten-style smart
+          notes you can copy, save as TXT, or export as PDF.
+        </p>
+        <div class="stats">
+          <div class="stat">📄 Image + PDF upload</div>
+          <div class="stat">🧠 Smart notes</div>
+          <div class="stat">✍️ Notebook style output</div>
+        </div>
+      </header>
+
+      <section class="layout">
+        <article class="card">
+          <div class="card-title">
+            <div class="card-icon">🪄</div>
+            <h2>Upload & Extract</h2>
+          </div>
+          <p>Drag and drop your image or PDF here, or click to browse from your device.</p>
+
+          <label class="drop-zone" id="dropZone" for="fileInput">
+            <div>
+              <div class="drop-icon">📎</div>
+              <strong>Drop your image or PDF here</strong>
+              <span>or click to choose a file</span>
+              <button class="btn btn-primary" id="browseButton" type="button">Choose File</button>
+            </div>
+          </label>
+
+          <input class="hidden" id="fileInput" type="file" accept="image/*,.pdf,application/pdf" />
+          <div class="filename" id="fileName">No file selected yet.</div>
+
+          <div class="rows top">
+            <button class="btn btn-primary" id="extractButton" type="button" disabled>Extract Text</button>
+            <button class="btn btn-secondary" id="clearButton" type="button">Clear</button>
+          </div>
+
+          <div class="status-box" aria-live="polite">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Waiting for file...</span>
+          </div>
+
+          <div class="loader" id="loader">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Processing...</span>
+          </div>
+
+          <p class="helper">Tip: PDF pages are rendered in the browser first, then scanned with OCR.</p>
+        </article>
+
+        <article class="card">
+          <div class="card-title">
+            <div class="card-icon">🤖</div>
+            <h2>Extracted Text & Notes</h2>
+          </div>
+
+          <div class="section-header">
+            <p>Review the extracted text, then generate clean smart notes from it.</p>
+            <div class="rows">
+              <button class="btn btn-secondary" id="copyTextButton" type="button" disabled>Copy Text</button>
+              <button class="btn btn-secondary" id="downloadTextButton" type="button" disabled>Download TXT</button>
+              <button class="btn btn-primary" id="generateNotesButton" type="button" disabled>Generate Smart Notes</button>
+            </div>
+          </div>
+
+          <textarea id="outputText" class="output-box" placeholder="Your extracted text will appear here..."></textarea>
+
+          <section class="notes-paper hidden" id="notesPaper">
+            <div class="section-header">
+              <div>
+                <h2>📌 Smart Notes</h2>
+                <p>Handwritten-style notes with clean formatting and simple structure.</p>
+              </div>
+              <div class="rows">
+                <button class="btn btn-secondary" id="copyNotesButton" type="button" disabled>Copy Notes</button>
+                <button class="btn btn-secondary" id="downloadNotesTxtButton" type="button" disabled>Download Notes as TXT</button>
+                <button class="btn btn-secondary" id="downloadNotesPdfButton" type="button" disabled>Download Notes as PDF</button>
+              </div>
+            </div>
+
+            <div class="notes-loader" id="notesLoader">
+              <span class="spinner" aria-hidden="true"></span>
+              <span>Generating smart notes...</span>
+            </div>
+
+            <div class="notes-summary" id="notesSummary">Your smart notes summary will appear here after generating notes.</div>
+            <div class="keywords" id="notesKeywords"></div>
+
+            <div id="notesExportArea">
+              <h3 class="handwritten-heading" id="mainNotesHeading">📌 Your Notes</h3>
+              <div class="notes-sections" id="notesSections"></div>
+            </div>
+          </section>
+        </article>
+      </section>
+    </section>
+  </main>
+  <script type="module">
+    import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+
+    const ui = {
+      body: document.body,
+      themeToggle: document.getElementById("themeToggle"),
+      fileInput: document.getElementById("fileInput"),
+      dropZone: document.getElementById("dropZone"),
+      browseButton: document.getElementById("browseButton"),
+      extractButton: document.getElementById("extractButton"),
+      clearButton: document.getElementById("clearButton"),
+      copyTextButton: document.getElementById("copyTextButton"),
+      downloadTextButton: document.getElementById("downloadTextButton"),
+      generateNotesButton: document.getElementById("generateNotesButton"),
+      copyNotesButton: document.getElementById("copyNotesButton"),
+      downloadNotesTxtButton: document.getElementById("downloadNotesTxtButton"),
+      downloadNotesPdfButton: document.getElementById("downloadNotesPdfButton"),
+      outputText: document.getElementById("outputText"),
+      fileName: document.getElementById("fileName"),
+      statusText: document.getElementById("statusText"),
+      statusDot: document.getElementById("statusDot"),
+      loader: document.getElementById("loader"),
+      notesPaper: document.getElementById("notesPaper"),
+      notesLoader: document.getElementById("notesLoader"),
+      notesSummary: document.getElementById("notesSummary"),
+      notesKeywords: document.getElementById("notesKeywords"),
+      notesSections: document.getElementById("notesSections"),
+      mainNotesHeading: document.getElementById("mainNotesHeading"),
+      notesExportArea: document.getElementById("notesExportArea")
+    };
+
+    let selectedFile = null;
+    let notesTextContent = "";
+    let isDarkMode = true;
+
+    function setStatus(message, state) {
+      ui.statusText.textContent = message;
+      ui.statusDot.className = "status-dot";
+      if (state === "processing") ui.statusDot.classList.add("processing");
+      if (state === "done") ui.statusDot.classList.add("done");
+    }
+
+    function setLoading(isLoading) {
+      ui.loader.classList.toggle("active", isLoading);
+      ui.extractButton.disabled = isLoading || !selectedFile;
+      ui.browseButton.disabled = isLoading;
+      ui.fileInput.disabled = isLoading;
+    }
+
+    function setNotesLoading(isLoading) {
+      ui.notesLoader.classList.toggle("active", isLoading);
+      ui.generateNotesButton.disabled = isLoading || !ui.outputText.value.trim();
+      ui.copyNotesButton.disabled = isLoading || !notesTextContent.trim();
+      ui.downloadNotesTxtButton.disabled = isLoading || !notesTextContent.trim();
+      ui.downloadNotesPdfButton.disabled = isLoading || !notesTextContent.trim();
+    }
+
+    function updateTextButtons() {
+      const hasText = ui.outputText.value.trim().length > 0;
+      ui.copyTextButton.disabled = !hasText;
+      ui.downloadTextButton.disabled = !hasText;
+      ui.generateNotesButton.disabled = !hasText;
+    }
+
+    function updateNotesButtons() {
+      const hasNotes = notesTextContent.trim().length > 0;
+      ui.copyNotesButton.disabled = !hasNotes;
+      ui.downloadNotesTxtButton.disabled = !hasNotes;
+      ui.downloadNotesPdfButton.disabled = !hasNotes;
+    }
+
+    function cleanText(text) {
+      return text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+    }
+
+    function normalizeLine(line) {
+      return line.replace(/\s+/g, " ").trim();
+    }
+
+    function splitIntoSentences(text) {
+      return cleanText(text).replace(/\n+/g, " ").split(/(?<=[.!?])\s+/).map(normalizeLine).filter((s) => s.length > 12);
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function getImportantWords(text) {
+      const stopWords = ["this","that","with","from","have","there","their","about","which","would","could","should","into","after","before","while","where","when","your","these","those","them","they","then","than","just","also","been","being","were","what","will","some","more","such","very","much","only","text","page","line","file","notes"];
+      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((word) => word.length > 4 && !stopWords.includes(word));
+      return Array.from(new Set(words)).slice(0, 8);
+    }
+
+    function toTitleCase(text) {
+      return text.toLowerCase().split(" ").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+    }
+
+    function highlightKeywords(text, keywords) {
+      let html = escapeHtml(text);
+      keywords.forEach((keyword) => {
+        const safeKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        html = html.replace(new RegExp("\\b(" + safeKeyword + ")\\b", "ig"), '<span class="highlight">$1</span>');
+      });
+      return html;
+    }
+
+    function buildPlainNotes(heading, bullets) {
+      const lines = [heading, ""];
+      bullets.forEach((bullet) => lines.push("- " + bullet));
+      return lines.join("\n").trim();
+    }
+
+    function resetNotes() {
+      notesTextContent = "";
+      ui.notesSummary.textContent = "Your smart notes summary will appear here after generating notes.";
+      ui.notesKeywords.innerHTML = "";
+      ui.notesSections.innerHTML = "";
+      ui.mainNotesHeading.textContent = "📌 Your Notes";
+      ui.notesPaper.classList.add("hidden");
+      setNotesLoading(false);
+      updateNotesButtons();
+    }
+
+    function clearAll() {
+      selectedFile = null;
+      ui.fileInput.value = "";
+      ui.fileName.textContent = "No file selected yet.";
+      ui.outputText.value = "";
+      ui.extractButton.disabled = true;
+      setLoading(false);
+      setStatus("Waiting for file...", "idle");
+      updateTextButtons();
+      resetNotes();
+    }
+
+    function showFile(file) {
+      selectedFile = file;
+      ui.fileName.textContent = "Selected file: " + file.name;
+      ui.extractButton.disabled = false;
+      setStatus("Ready to extract text.", "idle");
+    }
+
+    function renderKeywords(keywords) {
+      ui.notesKeywords.innerHTML = "";
+      keywords.forEach((keyword) => {
+        const tag = document.createElement("span");
+        tag.className = "keyword";
+        tag.textContent = toTitleCase(keyword);
+        ui.notesKeywords.appendChild(tag);
+      });
+    }
+
+    function renderNotes(heading, bullets, keywords) {
+      ui.mainNotesHeading.textContent = "📌 " + heading;
+      ui.notesSummary.textContent = "First line used as heading, remaining content turned into clean bullet points.";
+      renderKeywords(keywords);
+      ui.notesSections.innerHTML = "";
+
+      const section = document.createElement("section");
+      section.className = "notes-group";
+      section.innerHTML = '<div class="group-label">Notebook Notes</div><h4 class="group-heading">📌 ' + escapeHtml(heading) + '</h4>';
+
+      const list = document.createElement("ul");
+      list.className = "notes-points";
+      bullets.forEach((bullet) => {
+        const item = document.createElement("li");
+        item.innerHTML = highlightKeywords(bullet, keywords);
+        list.appendChild(item);
+      });
+
+      section.appendChild(list);
+      ui.notesSections.appendChild(section);
+      ui.notesPaper.classList.remove("hidden");
+    }
+
+    function generateSmartNotes() {
+      const cleanedText = cleanText(ui.outputText.value);
+      if (!cleanedText) return setStatus("Extract text first, then generate smart notes.", "idle");
+
+      resetNotes();
+      setNotesLoading(true);
+      setStatus("Processing...", "processing");
+
+      window.setTimeout(() => {
+        const lines = cleanedText.split("\n").map(normalizeLine).filter((line) => line.length > 0);
+        const headingLine = lines[0] || splitIntoSentences(cleanedText)[0] || "Magic Notes";
+        const heading = headingLine.replace(/[.!?]+$/, "");
+        let bullets = lines.length > 1 ? lines.slice(1).filter((line) => line.length > 2) : [];
+        if (bullets.length === 0) bullets = splitIntoSentences(cleanedText).slice(1);
+        if (bullets.length === 0) bullets = ["No extra bullet points found. You can edit the extracted text and try again."];
+
+        const keywords = getImportantWords(cleanedText);
+        notesTextContent = buildPlainNotes("📌 " + heading, bullets);
+        renderNotes(heading, bullets, keywords);
+        setNotesLoading(false);
+        updateNotesButtons();
+        setStatus("Done", "done");
+      }, 500);
+    }
+
+    async function recognizeImage(source, prefix) {
+      const result = await Tesseract.recognize(source, "eng", {
+        logger: function (info) {
+          if (info.status === "recognizing text") {
+            setStatus(prefix + " " + Math.round((info.progress || 0) * 100) + "%", "processing");
+          } else {
+            setStatus(prefix, "processing");
+          }
+        }
+      });
+      return result.data.text;
+    }
+
+    async function extractTextFromPdf(file) {
+      const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+      const pagesText = [];
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        setStatus("Processing PDF page " + pageNumber + " of " + pdf.numPages + "...", "processing");
+        const page = await pdf.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        const pageText = await recognizeImage(canvas, "Processing PDF page " + pageNumber + " of " + pdf.numPages + "...");
+        pagesText.push("Page " + pageNumber + "\n" + pageText.trim());
+      }
+
+      return pagesText.join("\n\n");
+    }
+
+    async function extractTextFromFile(file) {
+      const isImage = file.type.startsWith("image/");
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (!isImage && !isPdf) throw new Error("Please upload a valid image or PDF file.");
+      return isPdf ? extractTextFromPdf(file) : recognizeImage(file, "Processing...");
+    }
+
+    async function handleExtraction() {
+      if (!selectedFile) return setStatus("Please choose a file first.", "idle");
+      ui.outputText.value = "";
+      updateTextButtons();
+      setLoading(true);
+      setStatus("Processing...", "processing");
+
+      try {
+        ui.outputText.value = (await extractTextFromFile(selectedFile)).trim();
+        resetNotes();
+        setStatus("Done", "done");
+        updateTextButtons();
+      } catch (error) {
+        ui.outputText.value = "Error: " + error.message;
+        resetNotes();
+        setStatus("Something went wrong.", "idle");
+        updateTextButtons();
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function downloadTextFile(filename, text) {
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyToClipboard(text, successMessage, failureMessage) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus(successMessage, "done");
+      } catch (error) {
+        setStatus(failureMessage, "idle");
+      }
+    }
+
+    function downloadNotesPdf() {
+      if (!notesTextContent.trim()) return;
+      html2pdf().set({
+        margin: 0.5,
+        filename: "magic-notes.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
+      }).from(ui.notesExportArea).save();
+    }
+
+    function toggleTheme() {
+      isDarkMode = !isDarkMode;
+      ui.body.classList.toggle("light-mode", !isDarkMode);
+      ui.themeToggle.textContent = isDarkMode ? "🌙 Dark Mode" : "☀️ Light Mode";
+    }
+
+    ui.themeToggle.addEventListener("click", toggleTheme);
+    ui.browseButton.addEventListener("click", () => ui.fileInput.click());
+    ui.fileInput.addEventListener("change", (event) => { const file = event.target.files[0]; if (file) showFile(file); });
+    ui.extractButton.addEventListener("click", handleExtraction);
+    ui.clearButton.addEventListener("click", clearAll);
+    ui.copyTextButton.addEventListener("click", () => { if (ui.outputText.value.trim()) copyToClipboard(ui.outputText.value.trim(), "Done", "Copy failed. Please copy manually."); });
+    ui.downloadTextButton.addEventListener("click", () => { if (ui.outputText.value.trim()) downloadTextFile("magic-notes.txt", ui.outputText.value.trim()); });
+    ui.generateNotesButton.addEventListener("click", generateSmartNotes);
+    ui.copyNotesButton.addEventListener("click", () => { if (notesTextContent.trim()) copyToClipboard(notesTextContent, "Done", "Copy failed. Please copy notes manually."); });
+    ui.downloadNotesTxtButton.addEventListener("click", () => { if (notesTextContent.trim()) downloadTextFile("magic-notes-notes.txt", notesTextContent); });
+    ui.downloadNotesPdfButton.addEventListener("click", downloadNotesPdf);
+    ui.outputText.addEventListener("input", () => { updateTextButtons(); resetNotes(); });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      ui.dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        ui.dropZone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "dragend"].forEach((eventName) => {
+      ui.dropZone.addEventListener(eventName, () => ui.dropZone.classList.remove("dragover"));
+    });
+
+    ui.dropZone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      ui.dropZone.classList.remove("dragover");
+      const file = event.dataTransfer.files[0];
+      if (file) {
+        ui.fileInput.files = event.dataTransfer.files;
+        showFile(file);
+      }
+    });
+
+    clearAll();
+  </script>
+</body>
+</html>
