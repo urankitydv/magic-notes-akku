@@ -6,7 +6,7 @@
   <title>Magic Notes with Akku</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&family=Patrick+Hand&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
@@ -21,7 +21,12 @@
     .shell::before { width: 220px; height: 220px; top: -90px; right: -40px; background: rgba(106,240,208,.18); }
     .shell::after { width: 180px; height: 180px; left: -30px; bottom: -50px; background: rgba(155,176,255,.16); }
     .hero, .layout, .topbar { position: relative; z-index: 1; }
-    .topbar { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }
+    .brand-badge { display: inline-flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+    .brand-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,.35); box-shadow: 0 10px 24px rgba(0,0,0,.18); }
+    .brand-text { display: grid; gap: 2px; }
+    .brand-name { font-weight: 800; line-height: 1; }
+    .brand-role { color: var(--muted); font-size: .82rem; line-height: 1; }
     .theme-toggle { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 12px 16px; display: inline-flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; transition: transform .2s ease; }
     .theme-toggle:hover, .btn:hover { transform: translateY(-2px); }
     .hero { text-align: center; margin-bottom: 30px; }
@@ -59,30 +64,32 @@
     .notes-loader .spinner { width: 18px; height: 18px; border-width: 2px; border-color: rgba(32,49,74,.16); border-top-color: var(--paper-green); }
     .section-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
     .output-box { width: 100%; min-height: 320px; border-radius: 24px; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); padding: 18px; line-height: 1.75; resize: vertical; outline: none; }
-    .notes-paper { margin-top: 22px; padding: 22px; border-radius: 26px; border: 1px solid var(--paper-line); color: var(--paper-text); background: repeating-linear-gradient(to bottom, rgba(41,120,199,.08) 0, rgba(41,120,199,.08) 1px, transparent 1px, transparent 34px), linear-gradient(to right, rgba(228,108,130,.16) 0, rgba(228,108,130,.16) 3px, transparent 3px), var(--paper); box-shadow: 0 24px 40px rgba(16,40,67,.12); animation: notesRise .35s ease; }
+    .notes-paper { margin-top: 22px; padding: 22px; border-radius: 26px; border: 1px solid var(--paper-line); color: var(--paper-text); background: repeating-linear-gradient(to bottom, rgba(41,120,199,.08) 0, rgba(41,120,199,.08) 1px, transparent 1px, transparent 36px), linear-gradient(to right, rgba(228,108,130,.14) 0, rgba(228,108,130,.14) 3px, transparent 3px), var(--paper); box-shadow: 0 24px 40px rgba(16,40,67,.12); animation: notesRise .35s ease; }
     .notes-paper.hidden { display: none; }
     .notes-paper p { color: var(--paper-muted); }
-    .notes-container { display: grid; gap: 20px; max-width: 760px; margin: 0 auto; }
+    .notes-container { position: relative; display: grid; gap: 20px; max-width: 760px; margin: 0 auto; padding: 18px; border-radius: 22px; background: rgba(255,255,255,.72); overflow: hidden; }
+    .notes-container::after { content: "ANKIT YADUVANSHI"; position: absolute; inset: 0; display: grid; place-items: center; font-family: "Space Grotesk", sans-serif; font-size: clamp(1.8rem, 5vw, 3.8rem); font-weight: 700; letter-spacing: .12em; color: rgba(32,49,74,.07); transform: rotate(-24deg); pointer-events: none; z-index: 0; }
+    .notes-container > * { position: relative; z-index: 1; }
     .notes-image-wrap { text-align: center; padding: 12px; border-radius: 20px; background: rgba(255,255,255,.72); border: 1px solid rgba(49,91,128,.08); }
     .notes-image-wrap.hidden { display: none; }
     .notes-image-label { display: inline-flex; margin-bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgba(228,108,130,.1); color: var(--paper-pink); font-size: .82rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
     .notes-image-preview { width: min(100%, 420px); max-height: 360px; object-fit: contain; border-radius: 18px; box-shadow: 0 14px 28px rgba(19,39,66,.12); background: #fff; }
     .notes-summary { margin: 0 0 18px; padding: 14px 16px; border-radius: 18px; background: rgba(41,120,199,.06); border: 1px solid rgba(41,120,199,.08); color: #2d4c6f; line-height: 1.7; }
-    .handwritten-heading { font-family: "Caveat", cursive; font-size: 2rem; color: var(--paper-pink); margin: 0 0 12px; line-height: 1.1; }
+    .handwritten-heading { font-family: "Patrick Hand", cursive; font-size: 2rem; color: var(--paper-pink); margin: 0 0 12px; line-height: 1.15; font-weight: 700; }
     .keywords { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
     .keyword { padding: 6px 11px; border-radius: 999px; background: rgba(24,133,111,.12); color: var(--paper-green); font-size: .88rem; font-weight: 800; }
     .notes-sections { display: grid; gap: 18px; }
     .notes-group { padding: 16px 16px 10px; border-radius: 18px; background: rgba(255,255,255,.72); border: 1px solid rgba(49,91,128,.08); }
     .group-label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; margin-bottom: 10px; border-radius: 999px; background: rgba(41,120,199,.08); color: var(--paper-blue); font-size: .82rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
-    .group-heading { margin: 0 0 12px; color: var(--paper-pink); font-family: "Caveat", cursive; font-size: 1.7rem; line-height: 1.1; }
-    .notes-points { margin: 0; padding-left: 22px; color: var(--paper-text); line-height: 1.9; font-family: "Caveat", cursive; font-size: 1.45rem; }
+    .group-heading { margin: 0 0 12px; color: var(--paper-pink); font-family: "Patrick Hand", cursive; font-size: 1.7rem; line-height: 1.15; font-weight: 700; }
+    .notes-points { margin: 0; padding-left: 22px; color: var(--paper-text); line-height: 2.05; font-family: "Patrick Hand", cursive; font-size: 1.35rem; }
     .notes-points li + li { margin-top: 10px; }
     .notes-points li::marker { color: var(--paper-green); }
     .highlight { font-weight: 800; color: var(--paper-green); background: linear-gradient(180deg, transparent 56%, var(--paper-hi) 56%); }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,215,106,.55); } 70% { box-shadow: 0 0 0 12px rgba(255,215,106,0); } 100% { box-shadow: 0 0 0 0 rgba(255,215,106,0); } }
     @keyframes notesRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width:900px) { body { padding: 16px; } .shell { padding: 22px; border-radius: 26px; } .layout { grid-template-columns: 1fr; } .section-header { flex-direction: column; align-items: stretch; } }
+    @media (max-width:900px) { body { padding: 16px; } .shell { padding: 22px; border-radius: 26px; } .layout { grid-template-columns: 1fr; } .section-header { flex-direction: column; align-items: stretch; } .topbar { flex-direction: column; align-items: stretch; } }
     @media (max-width:560px) { .rows, .stats { flex-direction: column; } .btn { width: 100%; } .drop-zone { padding: 24px 18px; } .output-box { min-height: 280px; } }
   </style>
 </head>
@@ -90,6 +97,17 @@
   <main class="page">
     <section class="shell">
       <div class="topbar">
+        <div class="brand-badge">
+          <img
+            class="brand-avatar"
+            src="file:///C:/Users/ANKIT%20YADAV/AppData/Local/Packages/5319275A.WhatsAppDesktop_cv1g1gvanyjgm/LocalState/sessions/AD31DC1D4F9870EE02DC3D0CA2A3C4A25FB74EAC/transfers/2026-14/WhatsApp%20Image%202026-04-05%20at%2011.49.24%20AM.jpeg"
+            alt="Ankit Yaduvanshi"
+          />
+          <div class="brand-text">
+            <span class="brand-name">Akku</span>
+            <span class="brand-role">Ankit Yaduvanshi</span>
+          </div>
+        </div>
         <button class="theme-toggle" id="themeToggle" type="button">🌙 Dark Mode</button>
       </div>
 
